@@ -16,13 +16,20 @@
 
   // Represents the last non-erroneous results, so that when we get an error,
   // we can display them instead of taking away all the results.
-  let previousSearchResults: ApiSearchResults | null = $derived.by(() => {
+  //
+  // This must observe every outcome, even ones where nothing reads it, so it
+  // can't be a $derived: those are lazy, and this is only read on error. (A
+  // $derived that reads itself for the error case also recurses until the
+  // stack overflows.) Effects don't run during SSR, hence the initial value.
+  // svelte-ignore state_referenced_locally
+  let previousSearchResults: ApiSearchResults | null = $state.raw(
+    data.searchOutcome.kind === "success" ? data.searchOutcome.results : null,
+  );
+  $effect.pre(() => {
     if (data.searchOutcome.kind === "success") {
-      return data.searchOutcome.results;
+      previousSearchResults = data.searchOutcome.results;
     } else if (data.searchOutcome.kind === "none") {
-      return null;
-    } else {
-      return previousSearchResults;
+      previousSearchResults = null;
     }
   });
 </script>
